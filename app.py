@@ -6,8 +6,9 @@ import os
 from io import BytesIO
 
 
-@st.cache_resource(allow_output_mutation=True)
+@st.cache_resource
 def load_model():
+    """Carrega e armazena em cache o pipeline pré-treinado."""
     return joblib.load("classificador_treinado.pkl")
 
 def limpa_texto(texto: str) -> str:
