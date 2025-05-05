@@ -6,7 +6,7 @@ import os
 from io import BytesIO
 
 
-@st.cache(allow_output_mutation=True)
+@st.cache_resource(allow_output_mutation=True)
 def load_model():
     return joblib.load("classificador_treinado.pkl")
 
