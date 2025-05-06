@@ -31,6 +31,16 @@ model_names = [os.path.basename(f) for f in model_files]
 selected_name = st.selectbox("Selecione o modelo a ser usado", model_names)
 selected_model = os.path.join(model_dir, selected_name)
 
+# 3) Exibe o conteúdo do arquivo de log associado, se existir
+log_path = os.path.splitext(selected_model)[0] + ".log"
+if os.path.isfile(log_path):
+    with st.expander(f"Mostrar log de treinamento ({os.path.basename(log_path)})", expanded=False):
+        with open(log_path, "r", encoding="utf-8") as lf:
+            log_content = lf.read()
+        st.text_area("Log:", log_content, height=300)
+else:
+    st.warning(f"Nenhum arquivo de log encontrado para este modelo ({os.path.basename(log_path)}).")
+
 
 uploaded_file = st.file_uploader("Envie sua planilha", type=["xls","xlsx","csv"])
 col = st.text_input("Nome da coluna de descrição", value="descricao")
@@ -50,7 +60,7 @@ if uploaded_file is not None and col:
         else:
             # pré-processa e classifica
             df["_texto_limpo"] = df[col].apply(limpa_texto)
-            model = load_model()
+            model = load_model(selected_model)
 
             df["_previsto"] = model.predict(df["_texto_limpo"])
             df["_previsto"] = df["_previsto"].map({1: "TI", 0: "NÃO TI"})
