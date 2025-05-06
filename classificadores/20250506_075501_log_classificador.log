@@ -1,0 +1,26 @@
+Base de dados : base_dados_balanceado.xlsx
+Tamanho da base de dados : 18086
+Distribuição : classe
+1    9043
+0    9043
+Name: count, dtype: int64
+
+Fitting 5 folds for each of 16 candidates, totalling 80 fits
+Melhor combinação de hiperparâmetros: {'clf__C': 20}
+Melhor F1 (CV): 0.9845
+
+=== Relatório de classificação (threshold=0.5) ===
+              precision    recall  f1-score   support
+
+           0     0.9916    0.9840    0.9878      1809
+           1     0.9841    0.9917    0.9879      1809
+
+    accuracy                         0.9878      3618
+   macro avg     0.9879    0.9878    0.9878      3618
+weighted avg     0.9879    0.9878    0.9878      3618
+
+Matriz de confusão:
+ [[1780   29]
+ [  15 1794]]
+
+Modelo salvo em: 20250506_075501_classificador_treinado.pkl

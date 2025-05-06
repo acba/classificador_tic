@@ -4,12 +4,12 @@ import joblib
 import unicodedata
 import os
 from io import BytesIO
-
+import glob
 
 @st.cache_resource
-def load_model():
+def load_model(path: str):
     """Carrega e armazena em cache o pipeline pré-treinado."""
-    return joblib.load("classificador_treinado.pkl")
+    return joblib.load(path)
 
 def limpa_texto(texto: str) -> str:
     texto = str(texto).lower()
@@ -18,6 +18,19 @@ def limpa_texto(texto: str) -> str:
     return " ".join(texto.split())
 
 st.title("Classificador TI vs NÃO TI")
+
+model_dir = "classificadores"
+model_files = glob.glob(os.path.join(model_dir, "*.pkl"))
+if not model_files:
+    st.error("Nenhum modelo (.pkl) encontrado e disponível'.")
+    st.stop()
+
+# Caixa de seleção para o usuário escolher qual modelo carregar
+# Exibe somente o nome do arquivo, sem o caminho completo
+model_names = [os.path.basename(f) for f in model_files]
+selected_name = st.selectbox("Selecione o modelo a ser usado", model_names)
+selected_model = os.path.join(model_dir, selected_name)
+
 
 uploaded_file = st.file_uploader("Envie sua planilha", type=["xls","xlsx","csv"])
 col = st.text_input("Nome da coluna de descrição", value="descricao")
