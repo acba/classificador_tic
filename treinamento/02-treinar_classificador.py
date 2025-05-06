@@ -35,7 +35,7 @@ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 nome_modelo = f"{timestamp}_classificador_treinado.pkl"
 
 # Abre arquivo de log
-f = open(f"{timestamp}__classificador_treinado.log", "a", encoding="utf-8")
+f = open(f"{timestamp}_classificador_treinado.log", "a", encoding="utf-8")
 sys.stdout = Tee(sys.stdout, f)
 
 
