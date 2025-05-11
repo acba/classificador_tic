@@ -4,33 +4,44 @@
 import sys
 import os
 import argparse
+import re
 
 import pandas as pd
 import joblib
-
-from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (
-    classification_report,
-    confusion_matrix,
-)
 
 def limpa_texto(texto: str) -> str:
     """
     Normaliza, remove acentos, pontuação e excesso de espaços.
     """
     import unicodedata
-    # lower case
     texto = texto.lower()
-    # separa acentos
     texto = unicodedata.normalize('NFKD', texto)
-    # remove caracteres não alfanuméricos (exceto espaço)
     texto = ''.join(c for c in texto if c.isalnum() or c.isspace())
-    # collapse múltiplos espaços
     texto = ' '.join(texto.split())
     return texto
+
+def carrega_regex(path: str) -> list[str]:
+    """
+    Lê a planilha de filtros e retorna a lista de padrões regex.
+    """
+    df = pd.read_excel(path)
+
+    # adiciona regex para termos que devem ser pesquisados com as palvras exatas
+    df.loc[df.exato.notna(), ['termo']] = r'(?:\s|^)' + df['termo'] + r'(?:\s|$)'
+
+    # remove acentuacao dos termo de TI
+    df['termo'] = df['termo'].astype(str).str.normalize('NFKD')
+
+    return df['termo'].dropna().astype(str).tolist()
+
+def match_regex(texto: str, patterns: list[str]) -> bool:
+    """
+    Retorna True se qualquer pattern bater no texto (case-insensitive).
+    """
+    for pat in patterns:
+        if re.search(pat, texto, flags=re.IGNORECASE):
+            return True
+    return False
 
 def main():
     parser = argparse.ArgumentParser(
@@ -38,16 +49,23 @@ def main():
     )
     parser.add_argument(
         "--planilha",
+        required=True,
         help="Caminho para o arquivo da planilha (xls, xlsx ou csv)"
     )
     parser.add_argument(
         "--coluna",
+        required=True,
         help="Nome da coluna que contém o texto a ser classificado"
     )
     parser.add_argument(
         "--modelo",
         default="classificador_treinado.pkl",
         help="Caminho para o arquivo do modelo serializado (padrão: classificador_treinado.pkl)"
+    )
+    parser.add_argument(
+        "--filtros",
+        default="filtros/objeto.xlsx",
+        help="Planilha com termos regex (padrão: filtros/objeto.xlsx)"
     )
     parser.add_argument(
         "--saida",
@@ -58,9 +76,16 @@ def main():
     # Verifica existência do modelo
     if not os.path.isfile(args.modelo):
         sys.exit(f"Erro: modelo não encontrado em '{args.modelo}'")
+    if not os.path.isfile(args.filtros):
+        sys.exit(f"Erro: planilha de filtros não encontrada em '{args.filtros}'")
+    if not os.path.isfile(args.planilha):
+        sys.exit(f"Erro: planilha de entrada não encontrada em '{args.planilha}'")
 
     # Carrega o modelo (pipeline completo)
     modelo = joblib.load(args.modelo)
+
+    # Carrega os padrões regex
+    termos = carrega_regex(args.filtros)
 
     # Carrega a planilha
     ext = os.path.splitext(args.planilha)[1].lower()
@@ -77,8 +102,14 @@ def main():
 
     # Pré-processa e classifica
     df['_texto_limpo'] = df[args.coluna].apply(limpa_texto)
-    df['_previsto'] = modelo.predict(df['_texto_limpo'])
-    df['_previsto_label'] = df['_previsto'].map({1: 'TI', 0: 'NÃO TI'})
+    df['_previsto_modelo'] = modelo.predict(df['_texto_limpo'])
+    df['_previsto_modelo_label'] = df['_previsto_modelo'].map({1: 'TI', 0: 'NÃO TI'})
+
+    # Predição por regex
+    df['_previsto_regex'] = df['_texto_limpo'].apply(lambda t: int(match_regex(str(t), termos)))
+    df['_previsto_regex_label'] = df['_previsto_regex'].map({1: 'TI', 0: 'NÃO TI'})
+
+    df['_previsto_ensemble'] = df['_previsto_modelo'] + df['_previsto_regex']
 
     # Determina arquivo de saída
     if args.saida:
@@ -94,13 +125,10 @@ def main():
         df.to_csv(out_path, index=False)
 
     print(f"Planilha classificada salva em: {out_path}")
+    print("Colunas adicionadas:")
+    print(" - _previsto_modelo_label : predição do modelo (TI / NÃO TI)")
+    print(" - _previsto_regex_label  : predição por regex (TI / NÃO TI)")
+
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-

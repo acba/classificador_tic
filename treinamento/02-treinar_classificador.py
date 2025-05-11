@@ -7,6 +7,7 @@ import joblib
 from datetime import datetime
 import sys
 import shutil
+import os
 
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -32,10 +33,14 @@ class Tee:
             s.flush()
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+# Cria diretório para salvar modelos, se não existir
+modelos_path = 'modelos/'
+os.makedirs(modelos_path, exist_ok=True)
 nome_modelo = f"{timestamp}_classificador_treinado.pkl"
 
-# Abre arquivo de log
-f = open(f"{timestamp}_classificador_treinado.log", "a", encoding="utf-8")
+# redireciona stdout para console + log
+f = open(f"{modelos_path}{timestamp}_classificador_treinado.log", "a", encoding="utf-8")
 sys.stdout = Tee(sys.stdout, f)
 
 
@@ -44,20 +49,16 @@ def limpa_texto(texto: str) -> str:
     Normaliza, remove acentos, pontuação e excesso de espaços.
     """
     import unicodedata
-    # lower case
     texto = texto.lower()
-    # separa acentos
     texto = unicodedata.normalize('NFKD', texto)
-    # remove caracteres não alfanuméricos (exceto espaço)
     texto = ''.join(c for c in texto if c.isalnum() or c.isspace())
-    # collapse múltiplos espaços
     texto = ' '.join(texto.split())
     return texto
 
 
 # 1) Carregar o DataFrame
 df_filepath = 'base_dados_balanceado.xlsx'
-shutil.copy(df_filepath, f"{timestamp}_classificador_treinado_bd.xlsx")
+shutil.copy(df_filepath, f"{modelos_path}{timestamp}_classificador_treinado_bd.xlsx")
 
 df = pd.read_excel(df_filepath)
 df.rename(columns={'TIC': 'classe'}, inplace=True)
@@ -113,6 +114,7 @@ print(f"Melhor F1 (CV): {grid.best_score_:.4f}")
 # 6) Avaliação no conjunto de teste com threshold default (0.5)
 modelo = grid.best_estimator_
 y_pred = modelo.predict(X_test)
+
 print("\n=== Resultados com conjunto de teste ===\n")
 print("\nRelatório de classificação (threshold=0.5) ===")
 print(classification_report(y_test, y_pred, digits=4))
@@ -155,5 +157,5 @@ print(
 )
 
 # 5) Salva o pipeline completo
-joblib.dump(modelo, nome_modelo)
-print(f"\nModelo salvo em: {nome_modelo}")
+joblib.dump(modelo, f'{modelos_path}{nome_modelo}')
+print(f"\nModelo salvo em: {modelos_path}{nome_modelo}")

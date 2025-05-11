@@ -6,6 +6,7 @@ import os
 from io import BytesIO
 import glob
 import zipfile
+import re
 
 @st.cache_resource
 def load_model(path: str):
@@ -18,6 +19,25 @@ def limpa_texto(texto: str) -> str:
     texto = "".join(c for c in texto if c.isalnum() or c.isspace())
     return " ".join(texto.split())
 
+@st.cache_data
+def carrega_regex(path: str) -> list[str]:
+    df = pd.read_excel(path)
+
+    # adiciona regex para termos que devem ser pesquisados com as palvras exatas
+    df.loc[df.exato.notna(), ['termo']] = r'(?:\s|^)' + df['termo'] + r'(?:\s|$)'
+
+    # remove acentuacao dos termo de TI
+    df['termo'] = df['termo'].astype(str).str.normalize('NFKD')
+
+    return df['termo'].dropna().tolist()
+
+def match_regex(texto: str, patterns: list[str]) -> bool:
+    for pat in patterns:
+        if re.search(pat, texto, flags=re.IGNORECASE):
+            return True
+    return False
+
+
 st.title("Classificador TI vs NÃO TI")
 
 model_dir = "classificadores"
@@ -26,35 +46,32 @@ if not model_files:
     st.error("Nenhum modelo (.pkl) encontrado e disponível'.")
     st.stop()
 
-# Caixa de seleção para o usuário escolher qual modelo carregar
-# Exibe somente o nome do arquivo, sem o caminho completo
 model_names = [os.path.basename(f) for f in model_files]
 selected_name = st.selectbox("Selecione o modelo a ser usado", model_names)
 selected_model = os.path.join(model_dir, selected_name)
 
+# --- Exibe log e base _bd ---
+
 base_name = os.path.splitext(selected_model)[0]
 
-# 3) Exibe o conteúdo do arquivo de log associado, se existir
+# Exibe o conteúdo do arquivo de log associado, se existir
 log_path = base_name + ".log"
 if os.path.isfile(log_path):
-    with st.expander(f"Mostrar log de treinamento ({os.path.basename(log_path)})", expanded=False):
-        with open(log_path, "r", encoding="utf-8") as lf:
-            log_content = lf.read()
-        st.text_area("Log de treinamento:", log_content, height=300)
+    with st.expander(f"Log de treinamento ({os.path.basename(log_path)})", expanded=False):
+        st.text_area("", open(log_path, "r", encoding="utf-8").read(), height=300)
 else:
     st.warning(f"Nenhum arquivo de log encontrado para este modelo ({os.path.basename(log_path)}).")
 
-# 4) Exibe as premières linhas do arquivo _bd.xlsx associado, se existir
+# Exibe as primeiras linhas do arquivo _bd.xlsx associado, se existir
 bd_path = base_name + "_bd.xlsx"
 if os.path.isfile(bd_path):
     with st.expander(f"Prévia dos dados usados no treinamento do classificador ({os.path.basename(bd_path)})", expanded=False):
-        df_bd = pd.read_excel(bd_path)
-        st.dataframe(df_bd.head())
+        st.dataframe(pd.read_excel(bd_path).head())
 else:
     st.warning(f"Nenhuma base de dados _bd encontrada ({os.path.basename(bd_path)}).")
 
-# 5) Botão para download conjunto (modelo, log e _bd)
-if st.button("📦 Baixar recursos do modelo"):
+# Botão para download conjunto (modelo, log e _bd)
+if st.button("📦 Baixar modelo"):
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w") as z:
         # adiciona modelo
@@ -73,6 +90,15 @@ if st.button("📦 Baixar recursos do modelo"):
         mime="application/zip"
     )
 
+# --- Carrega padrões regex ---
+filtros_path = "filtros/objeto.xlsx"
+if not os.path.isfile(filtros_path):
+    st.error(f"Arquivo de filtros não encontrado em '{filtros_path}'.")
+    st.stop()
+
+termos = carrega_regex(filtros_path)
+
+# --- Upload da planilha a classificar ---
 uploaded_file = st.file_uploader("Envie sua planilha", type=["xls","xlsx","csv"])
 col = st.text_input("Nome da coluna de descrição", value="descricao")
 
@@ -93,8 +119,14 @@ if uploaded_file is not None and col:
             df["_texto_limpo"] = df[col].apply(limpa_texto)
             model = load_model(selected_model)
 
-            df["_previsto"] = model.predict(df["_texto_limpo"])
-            df["_previsto"] = df["_previsto"].map({1: "TI", 0: "NÃO TI"})
+            df["_previsto_modelo"] = model.predict(df["_texto_limpo"])
+            df["_previsto_modelo_classe"] = df["_previsto_modelo"].map({1: "TI", 0: "NÃO TI"})
+
+                # Predição por regex
+            df['_previsto_regex'] = df['_texto_limpo'].apply(lambda t: int(match_regex(str(t), termos)))
+            df['_previsto_regex_label'] = df['_previsto_regex'].map({1: 'TI', 0: 'NÃO TI'})
+
+            df['_previsto_ensemble'] = df['_previsto_modelo'] + df['_previsto_regex']
 
             # monta nome de saída a partir do nome de entrada
             base = os.path.splitext(uploaded_file.name)[0]
