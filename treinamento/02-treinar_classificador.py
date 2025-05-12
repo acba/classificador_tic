@@ -73,10 +73,17 @@ print()
 df = df.dropna(subset=['descricao', 'classe']).copy()
 df['texto_limpo'] = df['descricao'].apply(limpa_texto)
 
+print("\n=== Parâmetros de treinamento ===\n")
+
+tamanho_teste = 0.2
+tamanho_treino = 1 - tamanho_teste
+print(f"Tamanho do conjunto de treino: {tamanho_treino:.0%} - {tamanho_treino * len(df):,.0f} instâncias")
+print(f"Tamanho do conjunto de teste: {tamanho_teste:.0%} - {tamanho_teste * len(df):,.0f} instâncias")
+
 # 3) Divisão treino/teste
 df_train, df_test = train_test_split(
     df,
-    test_size=0.2,
+    test_size=tamanho_teste,
     stratify=df['classe'],
     random_state=42
 )
@@ -86,7 +93,7 @@ y_train = df_train['classe']
 X_test  = df_test['texto_limpo']
 y_test  = df_test['classe']
 
-# 4) Pipeline TF–IDF + Logistic Regression
+# Pipeline TF–IDF + Logistic Regression
 tfidf = TfidfVectorizer(ngram_range=(1,2), min_df=5, max_df=0.8)
 pipeline = Pipeline([
     ('tfidf', tfidf),
