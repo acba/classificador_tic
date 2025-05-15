@@ -1,0 +1,10 @@
+# Cache de bytecode Python
+treinamento/__pycache__/
+**/__pycache__/
+
+# Pasta de saída de modelos e logs
+treinamento/out/
+treinamento/tmp/
+
+# Checkpoints do Jupyter Notebook
+treinamento/.ipynb_checkpoints/

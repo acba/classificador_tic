@@ -24,12 +24,12 @@ if os.path.exists(RESULT_FILE):
     df_res = pd.read_excel(RESULT_FILE)
 else:
     df_res = pd.DataFrame(
-        columns=['balancear','classificador','ngram','min_df','max_df','f1','tn','fp','fn','tp']
+        columns=['balancear','classificador','ngram','min_df','max_df','f1','tn','fp','fn','tp', 'filtro_regex', 'bp']
     )
 
 # 4. Cria um set de tuplas (parâmetros) já executados
 executados = {
-    (row.balancear, row.classificador, row.ngram, row.min_df, row.max_df)
+    (row.balancear, row.classificador, row.filtro_regex, row.ngram, row.min_df, row.max_df)
     for row in df_res.itertuples()
 }
 

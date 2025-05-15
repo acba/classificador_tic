@@ -72,7 +72,6 @@ def match_regex(texto: str, patterns: list[str]) -> bool:
             return True
     return False
 
-
 def treina_e_testa(
         bd,
         balanceamento=True,
@@ -126,7 +125,7 @@ def treina_e_testa(
     if balanceamento:
         bd_filepath = f"{TMP_PATH}{timestamp}_base_dados_balanceada.xlsx"
         subprocess.run(
-                ["python3", "01-balancear.py", "--planilha", f"{bd}", '--saida', f"{bd_filepath}"],
+                ["python", "01-balancear.py", "--planilha", f"{bd}", '--saida', f"{bd_filepath}"],
                 check=True
             )
         print(f'Banco de dados {bd} foi balanceado')
@@ -242,11 +241,12 @@ def treina_e_testa(
         y_pred_regex = X_test.apply(lambda t: int(match_regex(str(t), termos_ti)))
         y_pred = y_pred & y_pred_regex
 
-    df_tmp = df_test
-    df_tmp['previsto_reglog'] = y_modelo
-    df_tmp['previsto_regex'] = y_pred_regex
-    df_tmp['previsto_final'] = y_pred
-    df_tmp.to_excel(f"teste_regex.xlsx", index=False)
+        df_tmp = df_test
+        df_tmp['previsto_reglog'] = y_modelo
+        df_tmp['previsto_regex'] = y_pred_regex
+        df_tmp['previsto_final'] = y_pred
+        df_tmp['delta'] = df_tmp['previsto_final'] - df_tmp['classe']
+        df_tmp.sort_values(by='delta').to_excel(f"teste_regex.xlsx", index=False)
 
     print("\n=== Resultados com conjunto de teste ===\n")
     print("\nRelatório de classificação ===")
