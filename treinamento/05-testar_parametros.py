@@ -36,10 +36,11 @@ executados = {
 # 5. Liste aqui os seus grids de parâmetros
 param_grid = {
     'balancear': [True],
-    'classificador': ['regressaologistica'],
-    'filtro_regex': ['../filtros/objeto.xlsx', False],
+    'classificador': ['regressaologistica'],    
     # 'classificador': ['svc'],
     # 'classificador': ['regressaologistica', 'svc'],
+    'filtro_regex': [False],
+    # 'filtro_regex': ['../filtros/objeto.xlsx', False],
     'ngram': [2, 3, 4],
     'min_df': [1, 2, 3],
     'max_df': [0.8]
@@ -69,7 +70,7 @@ for balancear, classificador, filtro_regex, ngram, min_df, max_df in combos:
 
     # 8. Chama a função
     f1, bp, tn, fp, fn, tp = treina_e_testa(
-        bd='base_dados_original.xlsx',
+        bd='base_dados_original_revisado.xlsx',
         balanceamento=balancear,
         classificador=classificador,
         ngram=ngram,
