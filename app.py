@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import joblib
 import unicodedata
+from unidecode import unidecode
+
 import os
 from io import BytesIO
 import glob
@@ -15,7 +17,11 @@ def load_model(path: str):
 
 def limpa_texto(texto: str) -> str:
     texto = str(texto).lower()
-    texto = unicodedata.normalize("NFKD", texto)
+    # texto = unicodedata.normalize("NFKD", texto)
+    texto = unidecode(texto)
+    texto = re.sub(r'\W+', ' ', texto).replace('_', ' ')
+    texto = re.sub(r'\s+', ' ', texto).strip()
+
     texto = "".join(c for c in texto if c.isalnum() or c.isspace())
     return " ".join(texto.split())
 
@@ -27,9 +33,10 @@ def carrega_regex(path: str) -> list[str]:
     df.loc[df.exato.notna(), ['termo']] = r'(?:\s|^)' + df['termo'] + r'(?:\s|$)'
 
     # remove acentuacao dos termo de TI
-    df['termo'] = df['termo'].astype(str).str.normalize('NFKD')
+    # df['termo'] = df['termo'].astype(str).str.normalize('NFKD')
+    df['termo'] = df['termo'].apply(unidecode)
 
-    return df['termo'].dropna().tolist()
+    return df['termo'].dropna().astype(str).tolist()
 
 def match_regex(texto: str, patterns: list[str]) -> bool:
     for pat in patterns:
