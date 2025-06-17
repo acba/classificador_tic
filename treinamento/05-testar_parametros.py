@@ -4,6 +4,20 @@
 import os
 import importlib.util
 import pandas as pd
+import argparse
+
+parser = argparse.ArgumentParser(
+        description="Testa os parâmetros de modelos diferentes em busca do melhor classificador"
+    )
+
+parser.add_argument(
+    "--bd",
+    required=True,
+    default="base_dados_original_revisado.xlsx",
+    help="Caminho para o arquivo da base de dados (treinamento e teste) (xls, xlsx ou csv) (padrão: base_dados.xlsx)"
+)
+
+args = parser.parse_args()
 
 # 1. Cria um spec para o arquivo
 spec = importlib.util.spec_from_file_location(
@@ -35,7 +49,7 @@ executados = {
 
 # 5. Liste aqui os seus grids de parâmetros
 param_grid = {
-    'balancear': [True],
+    'balancear': [True, False],
     'classificador': ['regressaologistica'],    
     # 'classificador': ['svc'],
     # 'classificador': ['regressaologistica', 'svc'],
@@ -70,7 +84,7 @@ for balancear, classificador, filtro_regex, ngram, min_df, max_df in combos:
 
     # 8. Chama a função
     f1, bp, tn, fp, fn, tp = treina_e_testa(
-        bd='base_dados_original_revisado.xlsx',
+        bd=args.bd,
         balanceamento=balancear,
         classificador=classificador,
         ngram=ngram,
